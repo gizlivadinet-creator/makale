@@ -2,9 +2,8 @@ name: OpenAI Makale Sistemi
 
 on:
   workflow_dispatch:
-
   schedule:
-    - cron: "0 3 * * *"   # Türkiye saati 06:00
+    - cron: "0 3 * * *"   # Her gün 06:00 (Türkiye saati)
 
 permissions:
   contents: write
@@ -18,42 +17,63 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Depoyu indir
       - name: Depoyu indir
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      # Node.js 22 kur
       - name: Node.js kur
         uses: actions/setup-node@v4
         with:
-          node-version: 22
-          cache: "npm"
+          node-version: "22"
 
+      # Makaleleri üret
       - name: Makaleleri üret
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: node src/makale.mjs
+        run: |
+          node src/makale.mjs
 
+      # Git ayarları
       - name: Git ayarları
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Değişiklikleri kaydet
+      # Değişiklik var mı kontrol et
+      - name: Değişiklikleri kontrol et
+        id: changes
         run: |
           git add .
 
           if git diff --cached --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
             echo "Değişiklik yok."
-            exit 0
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Değişiklik bulundu."
           fi
 
+      # Commit oluştur
+      - name: Commit oluştur
+        if: steps.changes.outputs.changed == 'true'
+        run: |
           git commit -m "🤖 Günlük OpenAI makaleleri"
 
+      # Uzak değişiklikleri al
       - name: Uzak değişiklikleri al
+        if: steps.changes.outputs.changed == 'true'
         run: |
-          git pull --rebase origin main || true
+          git pull --rebase origin main
 
+      # GitHub'a gönder
       - name: GitHub'a gönder
+        if: steps.changes.outputs.changed == 'true'
         run: |
           git push origin main
+
+      # Başarı mesajı
+      - name: Tamamlandı
+        run: echo "✅ Workflow başarıyla tamamlandı."
