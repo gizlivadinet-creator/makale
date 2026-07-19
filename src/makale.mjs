@@ -18,7 +18,7 @@ const AYARLAR = {
   rssDosyaAdi: "makaleler.xml",
   rssBaslik: "Tarihte Bugün - Günlük Tarih Makaleleri",
   rssAciklama:
-    "Wikipedia ve ücretsiz yapay zeka teknolojisi ile otomatik oluşturulan günlük tarih makaleleri"
+    "Ücretsiz yapay zeka teknolojileri ile desteklenen Mifrm Blogger Forum, her gün özgün ve kaliteli tarih içerikleri oluşturur. Sistem, önemli olayları analiz ederek SEO uyumlu, okunabilir ve profesyonel makaleleri otomatik olarak hazırlar."
 };
 
 /* =========================================================
@@ -273,7 +273,7 @@ ${htmlMakale}
 
 <hr>
 
-<p><strong>Kaynak:</strong> Wikipedia ve ücretsiz yapay zeka destekli içerik sistemi</p>
+<p><strong>Kaynak:</strong> Wikipedia yapay zeka teknolojileri ile desteklenen Mifrm Blogger Forum, her gün özgün ve kaliteli tarih içerikleri oluşturur. Sistem, önemli olayları analiz ederek SEO uyumlu, okunabilir ve profesyonel makaleleri otomatik olarak hazırlar.</p>
 
 <p>
   <a href="${detay.link}"
