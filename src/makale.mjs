@@ -5,7 +5,7 @@ import fs from "fs";
 ========================================================= */
 
 const AYARLAR = {
-  // Günlük makale sayısı
+  // Günlük üretilecek makale sayısı
   makaleSayisi: 5,
 
   // Minimum kelime sayısı
@@ -32,7 +32,7 @@ const AYARLAR = {
 
   // RSS açıklaması
   rssAciklama:
-    "Gemini AI tarafından otomatik oluşturulan günlük tarih makaleleri",
+    "OpenAI ChatGPT tarafından otomatik oluşturulan günlük tarih makaleleri",
 
   // Başlık üretme promptu
   konuPrompt: `
@@ -59,57 +59,45 @@ Tarihte bugün yaşanan bu gelişme, insanlık tarihinin şekillenmesinde öneml
 };
 
 /* =========================================================
-   GEMINI API ANAHTARI
+   OPENAI API ANAHTARI
 ========================================================= */
 
-const API_KEY = process.env.GEMINI_API_KEY;
+const API_KEY = process.env.OPENAI_API_KEY;
 
 if (!API_KEY) {
-  console.error("❌ GEMINI_API_KEY bulunamadı.");
+  console.error("❌ OPENAI_API_KEY bulunamadı.");
   process.exit(1);
 }
 
 /* =========================================================
-   GEMINI METİN ÜRET (ÜCRETSİZ VE STABİL MODEL)
+   CHATGPT METİN ÜRET
 ========================================================= */
 
-async function gemini(prompt) {
-  const url =
-    `https://generativelanguage.googleapis.com/v1beta/models/` +
-    `gemini-1.5-flash:generateContent?key=${API_KEY}`;
-
-  const response = await fetch(url, {
+async function chatgpt(prompt) {
+  const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${API_KEY}`
     },
     body: JSON.stringify({
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: prompt }]
-        }
-      ],
-      generationConfig: {
-        temperature: 0.8,
-        topP: 0.95,
-        maxOutputTokens: 4096
-      }
+      model: "gpt-5-mini",
+      input: prompt,
+      max_output_tokens: 4096
     })
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Gemini API Hatası (${response.status}): ${errorText}`);
+    throw new Error(`OpenAI API Hatası (${response.status}): ${errorText}`);
   }
 
   const data = await response.json();
 
-  const text =
-    data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  const text = data.output_text;
 
   if (!text || typeof text !== "string") {
-    throw new Error("Gemini geçerli bir metin döndürmedi.");
+    throw new Error("OpenAI geçerli bir metin döndürmedi.");
   }
 
   return text.trim();
@@ -151,7 +139,7 @@ async function main() {
        1. SEO Başlık Üret
     ----------------------------------------------------- */
 
-    const baslik = await gemini(AYARLAR.konuPrompt);
+    const baslik = await chatgpt(AYARLAR.konuPrompt);
 
     if (!baslik) {
       console.warn("⚠️ Başlık üretilemedi, atlanıyor.");
@@ -201,7 +189,7 @@ Ek Kurallar:
 - Sadece HTML döndür
 `;
 
-    const htmlMakale = await gemini(makalePrompt);
+    const htmlMakale = await chatgpt(makalePrompt);
 
     if (!htmlMakale) {
       console.warn("⚠️ Makale üretilemedi, atlanıyor.");
@@ -225,7 +213,7 @@ ${AYARLAR.ozelBolum}
 
 <hr>
 
-<p><strong>Kaynak:</strong> Google Gemini AI</p>
+<p><strong>Kaynak:</strong> OpenAI ChatGPT</p>
 `;
 
     const slug = slugify(baslik);
@@ -253,7 +241,7 @@ ${tamIcerik}
 
   <category>${AYARLAR.kategori}</category>
 
-  <dc:creator>Google Gemini AI</dc:creator>
+  <dc:creator>OpenAI ChatGPT</dc:creator>
 
   <pubDate>${now.toUTCString()}</pubDate>
 
