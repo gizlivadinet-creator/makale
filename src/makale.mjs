@@ -3,7 +3,7 @@ import path from "path";
 import { XMLValidator } from "fast-xml-parser";
 
 /* =========================================================
-   ULTRA PROFESYONEL BLOGGER RSS SİSTEMİ (DÜZELTİLMİŞ SÜRÜM)
+   ULTRA PROFESYONEL BLOGGER RSS SİSTEMİ (STANDART UYUMLU SÜRÜM)
    - ÜCRETSİZ
    - API ANAHTARI YOK
    - WIKIPEDIA + POLLINATIONS AI
@@ -13,6 +13,8 @@ import { XMLValidator } from "fast-xml-parser";
    - GERÇEK XML DOĞRULAMASI (fast-xml-parser ile)
    - CDATA KIRILMASINA KARŞI KORUMALI
    - TEK BİR OLAY HATASI TÜM ÜRETİMİ DÜŞÜRMEZ
+   - content:encoded (tam gövde) + kısa description (SEO özeti) ayrımı
+   - media:content (görsel/video) ve dc:creator ile RSS uzantı desteği
 ========================================================= */
 
 const AYARLAR = {
@@ -22,6 +24,12 @@ const AYARLAR = {
   rssBaslik: "Tarihte Bugün - Günlük Tarih Makaleleri",
   rssAciklama:
     "Ücretsiz yapay zeka teknolojileri ile desteklenen Mifrm Blogger Forum, her gün özgün ve kaliteli tarih içerikleri oluşturur. Sistem, önemli olayları analiz ederek SEO uyumlu, okunabilir ve profesyonel makaleleri otomatik olarak hazırlar.",
+  // dc:creator için yazar/etiket adı (geçerli bir e-posta gerektirmeyen
+  // serbest metin alanı; RSS'in <author> etiketi e-posta zorunlu kıldığı
+  // için burada Dublin Core ad alanı tercih edildi).
+  yazarAdi: "Mifrm Blogger Forum",
+  // <description> için kısa SEO özetinin maksimum karakter sayısı.
+  ozetMaksUzunluk: 220,
   // Aynı anda çok fazla olay işlenip ücretsiz API'lerin (Pollinations/Wikipedia)
   // hız sınırına takılmaması ve GitHub Actions 20 dk sınırını aşmamak için üst sınır.
   maksMakale: 15,
@@ -40,8 +48,9 @@ const OUTPUT_FILE = path.resolve(AYARLAR.rssDosyaAdi);
 
 /* =========================================================
    XML METİN DÜĞÜMLERİ İÇİN ESCAPE (CDATA DIŞI ELEMANLAR)
-   <link>, <guid>, <atom:link href="...">, <category> gibi
-   CDATA'ya SARILMAMIŞ ham XML metin düğümleri için kullanılır.
+   <link>, <guid>, <atom:link href="...">, <category>,
+   <media:content url="...">, <dc:creator> gibi CDATA'ya
+   SARILMAMIŞ ham XML metin düğümleri/öznitelikleri için kullanılır.
 ========================================================= */
 
 function escapeXml(text = "") {
@@ -113,6 +122,26 @@ function slugify(text) {
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
     .trim();
+}
+
+/* =========================================================
+   KISA SEO ÖZETİ (DÜZELTME)
+   RSS <description> alanı, tam HTML gövdesi yerine kısa bir
+   metin özeti içermelidir; tam gövde artık <content:encoded>
+   içinde taşınır. Bu ayrım hem Blogger'ın içe aktarma mantığına
+   hem de yaygın RSS/SEO pratiğine (excerpt + full content) uygundur.
+========================================================= */
+
+function kisaOzetOlustur(text, maxUzunluk = AYARLAR.ozetMaksUzunluk) {
+  const duzMetin = String(text || "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (duzMetin.length <= maxUzunluk) {
+    return duzMetin;
+  }
+
+  return `${duzMetin.slice(0, maxUzunluk).trim()}…`;
 }
 
 /* =========================================================
@@ -296,6 +325,30 @@ ${etiketler}
 }
 
 /* =========================================================
+   VİDEOLAR İÇİN media:content ETİKETLERİ (DÜZELTME)
+   HTML5 <video> etiketi sadece CDATA içindeki gövdede görünür;
+   feed okuyucuların/SEO araçlarının medya öğesini XML seviyesinde
+   de tanıyabilmesi için Yahoo Media RSS (media:content) uzantısı
+   eklendi. Bunlar CDATA DIŞINDA, öznitelik olarak escapeXml() ile
+   kaçışlanmalıdır (CDATA kaçışlama fonksiyonu burada UYGUN DEĞİL).
+========================================================= */
+
+function medyaVideoEtiketleriOlustur(videolar) {
+  if (!videolar || !videolar.length) {
+    return "";
+  }
+
+  return videolar
+    .map(
+      v =>
+        `  <media:content url="${escapeXml(v.url)}" medium="video" type="${escapeXml(
+          v.mime
+        )}" />`
+    )
+    .join("\n");
+}
+
+/* =========================================================
    ÜCRETSİZ AI ANALİZ (POLLINATIONS)
 ========================================================= */
 
@@ -472,8 +525,13 @@ ${htmlMakale}
 `;
 
   // CDATA'ya girecek her şeyi kırılmaya karşı güvenli hale getiriyoruz.
+  // Bu, artık <description> değil <content:encoded> için kullanılıyor.
   const icerik = cdataIcinGuvenliHaleGetir(icerikHam);
   const baslikGuvenli = cdataIcinGuvenliHaleGetir(baslik);
+
+  // DÜZELTME: <description> artık tam HTML değil, kısa bir SEO özeti
+  // taşıyor (CDATA'ya sarılmadan, düz metin olarak XML-escape edilmiş).
+  const kisaOzet = kisaOzetOlustur(event.text);
 
   // Aynı olay her yıl aynı Wikipedia linkine sahip olacağından,
   // guid'i o günün tarihiyle birleştirip TEKİL hale getiriyoruz.
@@ -487,14 +545,19 @@ ${htmlMakale}
   const linkGuvenli = escapeXml(detay.link);
   const guidGuvenli = escapeXml(guidDegeri);
   const kategoriGuvenli = escapeXml(AYARLAR.kategori);
+  const yazarGuvenli = escapeXml(AYARLAR.yazarAdi);
+  const gorselUrlGuvenli = escapeXml(imageUrl);
+  const medyaVideoEtiketleri = medyaVideoEtiketleriOlustur(videolar);
 
   return `
 <item>
   <title><![CDATA[${baslikGuvenli}]]></title>
 
-  <description><![CDATA[
+  <description>${escapeXml(kisaOzet)}</description>
+
+  <content:encoded><![CDATA[
 ${icerik}
-  ]]></description>
+  ]]></content:encoded>
 
   <link>${linkGuvenli}</link>
 
@@ -504,6 +567,10 @@ ${icerik}
 
   <pubDate>${itemPubDate}</pubDate>
 
+  <dc:creator>${yazarGuvenli}</dc:creator>
+
+  <media:content url="${gorselUrlGuvenli}" medium="image" />
+${medyaVideoEtiketleri}
 </item>`;
 }
 
@@ -576,9 +643,16 @@ async function main() {
 
   const RSS_URL = AYARLAR.siteUrl + AYARLAR.rssDosyaAdi;
 
+  // DÜZELTME: xmlns:content (content:encoded), xmlns:media (media:content)
+  // ve xmlns:dc (dc:creator) namespace tanımları eklendi. Bunlar olmadan
+  // aşağıdaki öğeler namespace'siz kalır ve bazı sıkı XML/RSS ayrıştırıcıları
+  // (ve Blogger'ın içe aktarma mantığı) bu öğeleri tanımaz.
   const rss = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"
-  xmlns:atom="http://www.w3.org/2005/Atom">
+  xmlns:atom="http://www.w3.org/2005/Atom"
+  xmlns:content="http://purl.org/rss/1.0/modules/content/"
+  xmlns:media="http://search.yahoo.com/mrss/"
+  xmlns:dc="http://purl.org/dc/elements/1.1/">
 
 <channel>
 
@@ -652,8 +726,8 @@ async function main() {
   console.log(`📝 Başarılı makale sayısı: ${basariliSayisi}`);
   console.log(`⚠️ Atlanan olay sayısı: ${hataliSayisi}`);
   console.log("🖼️ Görsel içerik HTML'inin başında tek adet olarak ekleniyor");
-  console.log("📱 Blogger editör uyumlu HTML üretildi");
-  console.log("🔍 SEO uyumlu tarih makaleleri oluşturuldu");
+  console.log("📱 Blogger editör uyumlu HTML üretildi (content:encoded)");
+  console.log("🔍 SEO uyumlu tarih makaleleri oluşturuldu (kısa description)");
   console.log("🚀 API anahtarı gerektirmez");
   console.log(`🌐 RSS URL: ${RSS_URL}`);
   console.log("====================================");
