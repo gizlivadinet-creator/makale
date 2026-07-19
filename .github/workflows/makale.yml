@@ -1,7 +1,8 @@
-name: OpenAI Makale Sistemi
+name: Günlük Blogger Makale Sistemi
 
 on:
   workflow_dispatch:
+
   schedule:
     - cron: "0 3 * * *"   # Her gün 06:00 (Türkiye saati)
 
@@ -9,71 +10,106 @@ permissions:
   contents: write
 
 concurrency:
-  group: openai-makale
+  group: blogger-makale
   cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
+    timeout-minutes: 15
+
     steps:
+      # ----------------------------------------------------
       # Depoyu indir
+      # ----------------------------------------------------
       - name: Depoyu indir
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: true
 
+      # ----------------------------------------------------
       # Node.js 22 kur
+      # ----------------------------------------------------
       - name: Node.js kur
         uses: actions/setup-node@v4
         with:
           node-version: "22"
 
+      # ----------------------------------------------------
+      # Node sürümünü göster
+      # ----------------------------------------------------
+      - name: Node sürümünü kontrol et
+        run: |
+          node -v
+          npm -v
+
+      # ----------------------------------------------------
       # Makaleleri üret
+      # API gerektirmez
+      # ----------------------------------------------------
       - name: Makaleleri üret
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           node src/makale.mjs
 
+      # ----------------------------------------------------
       # Git ayarları
+      # ----------------------------------------------------
       - name: Git ayarları
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+      # ----------------------------------------------------
       # Değişiklik var mı kontrol et
+      # ----------------------------------------------------
       - name: Değişiklikleri kontrol et
         id: changes
+        shell: bash
         run: |
           git add .
 
           if git diff --cached --quiet; then
-            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "Değişiklik yok."
           else
-            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "changed=true" >> "$GITHUB_OUTPUT"
             echo "Değişiklik bulundu."
           fi
 
+      # ----------------------------------------------------
       # Commit oluştur
+      # ----------------------------------------------------
       - name: Commit oluştur
         if: steps.changes.outputs.changed == 'true'
         run: |
-          git commit -m "🤖 Günlük OpenAI makaleleri"
+          git commit -m "📰 Günlük otomatik Blogger makaleleri"
 
-      # Uzak değişiklikleri al
+      # ----------------------------------------------------
+      # Uzak değişiklikleri al (fetch first hatasını önler)
+      # ----------------------------------------------------
       - name: Uzak değişiklikleri al
         if: steps.changes.outputs.changed == 'true'
         run: |
-          git pull --rebase origin main
+          git pull --rebase origin main || true
 
+      # ----------------------------------------------------
       # GitHub'a gönder
+      # ----------------------------------------------------
       - name: GitHub'a gönder
         if: steps.changes.outputs.changed == 'true'
         run: |
           git push origin main
 
+      # ----------------------------------------------------
       # Başarı mesajı
+      # ----------------------------------------------------
       - name: Tamamlandı
-        run: echo "✅ Workflow başarıyla tamamlandı."
+        run: |
+          echo "===================================="
+          echo "✅ Workflow başarıyla tamamlandı"
+          echo "📰 Makaleler üretildi"
+          echo "📤 GitHub'a gönderildi"
+          echo "🚀 Blogger RSS sistemi hazır"
+          echo "===================================="
