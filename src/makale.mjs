@@ -220,7 +220,8 @@ async function main() {
   }
 
   const data = await response.json();
-  if (!data.events || !data.events.length) {
+
+if (!data.events || !data.events.length) {
   throw new Error("Bugün için olay bulunamadı.");
 }
 
