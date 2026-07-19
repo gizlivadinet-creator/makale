@@ -57,10 +57,10 @@ function slugify(text) {
 async function wikiDetay(title) {
   try {
     const url =
-      `https://tr.wikipedia.org/w/api.php?action=query&format=json&origin=*` +
-      `&prop=extracts|pageimages|info` +
-      `&inprop=url&explaintext=1&exintro=1&piprop=original` +
-      `&titles=${encodeURIComponent(title)}`;
+  `https://tr.wikipedia.org/w/api.php?action=query&format=json&origin=*` +
+  `&prop=extracts|pageimages|info` +
+  `&inprop=url&explaintext=1&piprop=original` +
+  `&titles=${encodeURIComponent(title)}`;
 
     const res = await fetch(url);
 
