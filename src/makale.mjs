@@ -1,110 +1,38 @@
 import fs from "fs";
 
 /* =========================================================
-   PROFESYONEL AYARLAR
+   ULTRA PROFESYONEL BLOGGER RSS SİSTEMİ
+   - ÜCRETSİZ
+   - API ANAHTARI YOK
+   - WIKIPEDIA + POLLINATIONS AI
+   - BLOGGER UYUMLU
+   - SEO ODAKLI
+   - GÖRSELLİ
 ========================================================= */
 
 const AYARLAR = {
-  // Günlük üretilecek makale sayısı
-  makaleSayisi: 5,
-
-  // Minimum kelime sayısı
-  minimumKelime: 1200,
-
-  // Kategori
+  makaleSayisi: 50,
   kategori: "Tarih",
-
-  // Dil
-  dil: "Türkçe",
-
-  // Yazım tarzı
-  tarz:
-    "Profesyonel, akıcı, SEO uyumlu, insan tarafından yazılmış gibi doğal ve bilgilendirici",
-
-  // GitHub Pages adresi (SONUNDA / OLMALI)
   siteUrl: "https://gizlivadinet-creator.github.io/makale/",
-
-  // RSS dosyası
   rssDosyaAdi: "makaleler.xml",
-
-  // RSS başlığı
-  rssBaslik: "Tarihte Bugün - AI Günlük Makaleler",
-
-  // RSS açıklaması
+  rssBaslik: "Tarihte Bugün - Günlük Tarih Makaleleri",
   rssAciklama:
-    "OpenAI ChatGPT tarafından otomatik oluşturulan günlük tarih makaleleri",
-
-  // Başlık üretme promptu
-  konuPrompt: `
-Bugünün tarihine göre tarihte yaşanmış önemli bir olayı seç.
-
-Kurallar:
-- SEO uyumlu başlık yaz
-- Türkçe yaz
-- En fazla 60 karakter olsun
-- Başlıkta "Tarihte Bugün" ifadesi geçsin
-- Örnek: "Tarihte Bugün: Ay’a İlk İnsanlı İniş"
-- Sadece başlığı döndür
-`,
-
-  // Makale sonuna eklenecek bölüm
-  ozelBolum: `
-<h2>Sonuç</h2>
-<p>
-Bu olay, dünya tarihinin önemli dönüm noktalarından biri olarak kabul edilir.
-Siyasi, kültürel ve bilimsel etkileri günümüzde de hissedilmeye devam etmektedir.
-Tarihte bugün yaşanan bu gelişme, insanlık tarihinin şekillenmesinde önemli rol oynamıştır.
-</p>
-`
+    "Wikipedia ve ücretsiz yapay zeka teknolojisi ile otomatik oluşturulan günlük tarih makaleleri"
 };
 
 /* =========================================================
-   OPENAI API ANAHTARI
+   HTML GÜVENLİĞİ
 ========================================================= */
 
-const API_KEY = process.env.OPENAI_API_KEY;
-
-if (!API_KEY) {
-  console.error("❌ OPENAI_API_KEY bulunamadı.");
-  process.exit(1);
+function temizle(text = "") {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 /* =========================================================
-   CHATGPT METİN ÜRET
-========================================================= */
-
-async function chatgpt(prompt) {
-  const response = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${API_KEY}`
-    },
-    body: JSON.stringify({
-      model: "gpt-5-mini",
-      input: prompt,
-      max_output_tokens: 4096
-    })
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`OpenAI API Hatası (${response.status}): ${errorText}`);
-  }
-
-  const data = await response.json();
-
-  const text = data.output_text;
-
-  if (!text || typeof text !== "string") {
-    throw new Error("OpenAI geçerli bir metin döndürmedi.");
-  }
-
-  return text.trim();
-}
-
-/* =========================================================
-   SEO UYUMLU SLUG OLUŞTUR
+   SEO SLUG
 ========================================================= */
 
 function slugify(text) {
@@ -123,141 +51,235 @@ function slugify(text) {
 }
 
 /* =========================================================
+   WIKIPEDIA DETAY ÇEK
+========================================================= */
+
+async function wikiDetay(title) {
+  try {
+    const url =
+      `https://tr.wikipedia.org/w/api.php?action=query&format=json&origin=*` +
+      `&prop=extracts|pageimages|info` +
+      `&inprop=url&explaintext=1&exintro=1&piprop=original` +
+      `&titles=${encodeURIComponent(title)}`;
+
+    const res = await fetch(url);
+
+    if (!res.ok) {
+      throw new Error(`Wikipedia API: ${res.status}`);
+    }
+
+    const data = await res.json();
+    const page = Object.values(data.query.pages)[0];
+
+    return {
+      text: page.extract || "",
+      image: page.original?.source || "",
+      link:
+        page.fullurl ||
+        `https://tr.wikipedia.org/wiki/${encodeURIComponent(title)}`
+    };
+  } catch (err) {
+    console.error("⚠️ Wiki detay hatası:", err.message);
+
+    return {
+      text: "",
+      image: "",
+      link: "https://tr.wikipedia.org"
+    };
+  }
+}
+
+/* =========================================================
+   ÜCRETSİZ AI MAKALE ÜRET (POLLINATIONS)
+========================================================= */
+
+async function aiMakale(prompt) {
+  try {
+    const url =
+      `https://text.pollinations.ai/${encodeURIComponent(prompt)}`;
+
+    const res = await fetch(url);
+
+    if (!res.ok) {
+      throw new Error(`AI Servisi: ${res.status}`);
+    }
+
+    const text = await res.text();
+
+    return text.trim();
+  } catch (err) {
+    console.error("⚠️ AI hatası:", err.message);
+    return "";
+  }
+}
+
+/* =========================================================
+   BLOGGER UYUMLU SEO HTML
+========================================================= */
+
+function bloggerHtmlOlustur({
+  baslik,
+  olayMetni,
+  detayMetni,
+  aiMetni
+}) {
+  return `
+<h2>${temizle(baslik)}</h2>
+
+<p><strong>SEO Özeti:</strong> ${temizle(
+    baslik
+  )} hakkında tarihsel arka planı, dünya tarihine etkileri ve önemli gelişmeleri içeren detaylı inceleme.</p>
+
+<p><strong>${temizle(
+    baslik
+  )}</strong>, dünya tarihinin önemli dönüm noktalarından biridir.</p>
+
+<h3>Olayın Özeti</h3>
+<p>${temizle(olayMetni)}</p>
+
+<h3>Tarihsel Arka Plan</h3>
+<p>${temizle(detayMetni)}</p>
+
+${
+  aiMetni
+    ? `
+<h3>Detaylı Analiz</h3>
+<p>${temizle(aiMetni)}</p>
+`
+    : ""
+}
+
+<h3>Dünya Tarihine Etkileri</h3>
+<p>Bu olayın etkileri uzun yıllar boyunca hissedilmiş ve birçok ülkenin siyasi, ekonomik ve toplumsal yapısını etkilemiştir.</p>
+
+<h3>Sıkça Sorulan Sorular</h3>
+
+<p><strong>Bu olay neden önemlidir?</strong></p>
+<p>Çünkü dönemin güç dengelerini etkileyen ve tarihsel süreci değiştiren sonuçlar doğurmuştur.</p>
+
+<p><strong>Günümüze etkisi var mı?</strong></p>
+<p>Evet, tarihçiler ve araştırmacılar tarafından günümüzde de incelenen önemli gelişmeler arasında yer almaktadır.</p>
+
+<h3>Sonuç</h3>
+<p><strong>${temizle(
+    baslik
+  )}</strong>, insanlık tarihinin dönüm noktalarından biri olarak kabul edilir ve tarih araştırmalarında önemli bir yere sahiptir.</p>
+`;
+}
+
+/* =========================================================
    ANA İŞLEM
 ========================================================= */
 
 async function main() {
   const now = new Date();
-  const RSS_URL = AYARLAR.siteUrl + AYARLAR.rssDosyaAdi;
+
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+
+  const api =
+    `https://tr.wikipedia.org/api/rest_v1/feed/onthisday/events/${month}/${day}`;
+
+  console.log("📅 Wikipedia verisi çekiliyor...");
+  console.log(api);
+
+  const response = await fetch(api);
+
+  if (!response.ok) {
+    throw new Error(`Wikipedia API Hatası: ${response.status}`);
+  }
+
+  const data = await response.json();
+
+  if (!data.events || !data.events.length) {
+    throw new Error("Bugün için olay bulunamadı.");
+  }
+
+  const secilenler = data.events.slice(0, AYARLAR.makaleSayisi);
 
   let items = "";
 
-  for (let i = 1; i <= AYARLAR.makaleSayisi; i++) {
-    console.log(`📝 Makale ${i} oluşturuluyor...`);
+  for (const event of secilenler) {
+    const title = event.pages?.[0]?.title || event.text;
 
-    /* -----------------------------------------------------
-       1. SEO Başlık Üret
-    ----------------------------------------------------- */
+    console.log(`📝 Makale oluşturuluyor: ${title}`);
 
-    const baslik = await chatgpt(AYARLAR.konuPrompt);
+    const detay = await wikiDetay(title);
 
-    if (!baslik) {
-      console.warn("⚠️ Başlık üretilemedi, atlanıyor.");
-      continue;
-    }
+    const baslik = `Tarihte Bugün: ${title}`;
 
-    console.log(`📌 Başlık: ${baslik}`);
+    // Ücretsiz AI destekli analiz
+    const aiMetni = await aiMakale(`
+${baslik} hakkında 2-3 paragraf tarihsel analiz yaz.
+Türkçe yaz.
+Akıcı ve bilgilendirici olsun.
+HTML etiketi kullanma.
+`);
 
-    /* -----------------------------------------------------
-       2. AI Görsel URL Oluştur
-    ----------------------------------------------------- */
+    const htmlMakale = bloggerHtmlOlustur({
+      baslik,
+      olayMetni: event.text,
+      detayMetni: detay.text || event.text,
+      aiMetni
+    });
 
-    const imagePrompt =
-      `${baslik}, historical illustration, cinematic, ultra detailed, 16:9`;
-
+    // Görsel: Wikipedia varsa onu kullan, yoksa AI görsel üret
     const imageUrl =
-      `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}`;
+      detay.image ||
+      `https://image.pollinations.ai/prompt/${encodeURIComponent(
+        baslik + " historical illustration cinematic 16:9"
+      )}`;
 
-    /* -----------------------------------------------------
-       3. Blogger Uyumlu SEO Makale Üret
-    ----------------------------------------------------- */
-
-    const makalePrompt = `
-Konu: "${baslik}"
-
-Aşağıdaki kurallara uygun Blogger editör uyumlu HTML makale yaz:
-
-- Dil: ${AYARLAR.dil}
-- Kategori: ${AYARLAR.kategori}
-- Yazım tarzı: ${AYARLAR.tarz}
-- Minimum kelime: ${AYARLAR.minimumKelime}
-
-SEO Kuralları:
-- İlk paragrafta anahtar kelime geçsin
-- 150-160 karakterlik SEO özeti oluştur
-- <h2> başlıkları kullan
-- <p> paragrafları kullan
-- Sıkça Sorulan Sorular bölümü ekle
-- Sonuç bölümü ekle
-- Anahtar kelimeyi doğal şekilde kullan
-
-Ek Kurallar:
-- Kopya içerik üretme
-- Tarihsel doğruluğa dikkat et
-- Akıcı ve okunabilir yaz
-- Markdown kullanma
-- Sadece HTML döndür
-`;
-
-    const htmlMakale = await chatgpt(makalePrompt);
-
-    if (!htmlMakale) {
-      console.warn("⚠️ Makale üretilemedi, atlanıyor.");
-      continue;
-    }
-
-    /* -----------------------------------------------------
-       4. Görsel + Makale Birleştir
-    ----------------------------------------------------- */
-
-    const tamIcerik = `
+    const icerik = `
 <p>
   <img src="${imageUrl}"
-       alt="${baslik}"
+       alt="${temizle(baslik)}"
        style="width:100%;height:auto;border-radius:12px;display:block;margin-bottom:20px;">
 </p>
 
 ${htmlMakale}
 
-${AYARLAR.ozelBolum}
-
 <hr>
 
-<p><strong>Kaynak:</strong> OpenAI ChatGPT</p>
+<p><strong>Kaynak:</strong> Wikipedia ve ücretsiz yapay zeka destekli içerik sistemi</p>
+
+<p>
+  <a href="${detay.link}"
+     target="_blank"
+     rel="nofollow noopener">
+     Detaylı bilgi için tıklayın
+  </a>
+</p>
 `;
-
-    const slug = slugify(baslik);
-    const link = AYARLAR.siteUrl + slug + ".html";
-
-    /* -----------------------------------------------------
-       5. RSS Item Oluştur
-    ----------------------------------------------------- */
 
     items += `
 <item>
   <title><![CDATA[${baslik}]]></title>
 
   <description><![CDATA[
-${tamIcerik}
+${icerik}
   ]]></description>
 
   <content:encoded><![CDATA[
-${tamIcerik}
+${icerik}
   ]]></content:encoded>
 
-  <link>${link}</link>
+  <link>${detay.link}</link>
 
-  <guid isPermaLink="true">${link}</guid>
+  <guid isPermaLink="true">${detay.link}</guid>
 
   <category>${AYARLAR.kategori}</category>
 
-  <dc:creator>OpenAI ChatGPT</dc:creator>
-
   <pubDate>${now.toUTCString()}</pubDate>
-
-  <enclosure url="${imageUrl}" type="image/jpeg"/>
 
 </item>`;
   }
 
-  /* -------------------------------------------------------
-     RSS DOSYASI OLUŞTUR
-  ------------------------------------------------------- */
+  const RSS_URL = AYARLAR.siteUrl + AYARLAR.rssDosyaAdi;
 
   const rss = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"
   xmlns:atom="http://www.w3.org/2005/Atom"
-  xmlns:dc="http://purl.org/dc/elements/1.1/"
   xmlns:content="http://purl.org/rss/1.0/modules/content/">
 
 <channel>
@@ -287,10 +309,11 @@ ${tamIcerik}
   console.log("====================================");
   console.log("✅ RSS başarıyla oluşturuldu");
   console.log(`📄 Dosya: ${AYARLAR.rssDosyaAdi}`);
-  console.log(`📝 Makale sayısı: ${AYARLAR.makaleSayisi}`);
-  console.log("🖼️ Her makaleye otomatik görsel eklendi");
+  console.log(`📝 Makale sayısı: ${secilenler.length}`);
+  console.log("🖼️ Görseller otomatik eklendi");
   console.log("📱 Blogger editör uyumlu HTML üretildi");
   console.log("🔍 SEO uyumlu tarih makaleleri oluşturuldu");
+  console.log("🚀 API anahtarı gerektirmez");
   console.log("====================================");
 }
 
