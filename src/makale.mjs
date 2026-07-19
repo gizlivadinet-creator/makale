@@ -5,11 +5,11 @@ import fs from "fs";
 ========================================================= */
 
 const AYARLAR = {
-  // Günde kaç makale üretilecek
+  // Günde üretilecek makale sayısı
   makaleSayisi: 5,
 
   // Minimum kelime sayısı
-  minimumKelime: 1600,
+  minimumKelime: 1200,
 
   // Kategori
   kategori: "Tarih",
@@ -18,7 +18,8 @@ const AYARLAR = {
   dil: "Türkçe",
 
   // Yazım tarzı
-  tarz: "Profesyonel, akıcı, SEO uyumlu ve insan tarafından yazılmış gibi",
+  tarz:
+    "Profesyonel, akıcı, SEO uyumlu, insan tarafından yazılmış gibi doğal ve bilgilendirici",
 
   // Site adresi (SONUNDA / OLMALI)
   siteUrl: "https://gizlivadinet-creator.github.io/",
@@ -27,17 +28,32 @@ const AYARLAR = {
   rssDosyaAdi: "makaleler.xml",
 
   // RSS başlığı
-  rssBaslik: "AI Günlük Makaleler",
+  rssBaslik: "Tarihte Bugün - AI Günlük Makaleler",
 
   // RSS açıklaması
-  rssAciklama: "Gemini AI tarafından otomatik oluşturulan günlük makaleler",
+  rssAciklama:
+    "Gemini AI tarafından otomatik oluşturulan günlük tarih makaleleri",
+
+  // Başlık üretme promptu
+  konuPrompt: `
+Bugünün tarihine göre tarihte yaşanmış önemli bir olayı seç.
+
+Kurallar:
+- SEO uyumlu başlık yaz
+- Türkçe yaz
+- En fazla 60 karakter olsun
+- Başlıkta "Tarihte Bugün" ifadesi geçsin
+- Örnek: "Tarihte Bugün: Ay’a İlk İnsanlı İniş"
+- Sadece başlığı döndür
+`,
 
   // Makale sonuna eklenecek bölüm
   ozelBolum: `
 <h2>Sonuç</h2>
 <p>
-Bu olay, tarih boyunca insanlığın gelişimine önemli katkılar sağlamış
-ve günümüzde de etkileri hissedilen gelişmeler arasında yer almıştır.
+Bu olay, dünya tarihinin önemli dönüm noktalarından biri olarak kabul edilir.
+Siyasi, kültürel ve bilimsel etkileri günümüzde de hissedilmeye devam etmektedir.
+Tarihte bugün yaşanan bu gelişme, insanlık tarihinin şekillenmesinde önemli rol oynamıştır.
 </p>
 `
 };
@@ -55,12 +71,13 @@ if (!API_KEY) {
 
 /* =========================================================
    GEMINI METİN ÜRET
+   DÜZELTİLDİ: gemini-2.5-flash-lite kullanılıyor
 ========================================================= */
 
 async function gemini(prompt) {
   const url =
     `https://generativelanguage.googleapis.com/v1beta/models/` +
-    `gemini-2.5-flash:generateContent?key=${API_KEY}`;
+    `gemini-2.5-flash-lite:generateContent?key=${API_KEY}`;
 
   const response = await fetch(url, {
     method: "POST",
@@ -113,8 +130,6 @@ function slugify(text) {
 
 async function main() {
   const now = new Date();
-  const tarih = now.toLocaleDateString("tr-TR");
-
   const RSS_URL = AYARLAR.siteUrl + AYARLAR.rssDosyaAdi;
 
   let items = "";
@@ -126,18 +141,7 @@ async function main() {
        1. Başlık üret
     ----------------------------------------------------- */
 
-    const baslikPrompt = `
-${tarih} tarihinde yaşanmış önemli bir tarihi olayı seç.
-
-Kurallar:
-- Sadece başlık yaz
-- SEO uyumlu olsun
-- Türkçe yaz
-- 60 karakteri geçmesin
-- Tırnak kullanma
-`;
-
-    const baslik = await gemini(baslikPrompt);
+    const baslik = await gemini(AYARLAR.konuPrompt);
 
     if (!baslik) {
       console.warn("⚠️ Başlık üretilemedi, atlanıyor.");
@@ -169,13 +173,22 @@ Aşağıdaki kurallara uygun Blogger editör uyumlu HTML makale yaz:
 - Kategori: ${AYARLAR.kategori}
 - Yazım tarzı: ${AYARLAR.tarz}
 - Minimum kelime: ${AYARLAR.minimumKelime}
+
+SEO Kuralları:
+- İlk paragrafta anahtar kelime geçsin
+- 150-160 karakterlik SEO özeti oluştur
 - <h2> başlıkları kullan
 - <p> paragrafları kullan
-- Giriş, gelişme ve sonuç bölümleri olsun
-- Anahtar kelime yoğunluğu doğal olsun
+- Sıkça Sorulan Sorular bölümü ekle
+- Sonuç bölümü ekle
+- Anahtar kelimeyi doğal şekilde kullan
+
+Ek Kurallar:
 - Kopya içerik üretme
-- Sadece HTML döndür
+- Tarihsel doğruluğa dikkat et
+- Akıcı ve okunabilir yaz
 - Markdown kullanma
+- Sadece HTML döndür
 `;
 
     const htmlMakale = await gemini(makalePrompt);
@@ -279,6 +292,7 @@ ${tamIcerik}
   console.log(`📝 Makale sayısı: ${AYARLAR.makaleSayisi}`);
   console.log("🖼️ Her makaleye otomatik görsel eklendi");
   console.log("📱 Blogger editör uyumlu HTML üretildi");
+  console.log("🔍 SEO uyumlu tarih makaleleri oluşturuldu");
   console.log("====================================");
 }
 
