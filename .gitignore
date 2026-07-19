@@ -1,6 +1,8 @@
 node_modules/
 npm-debug.log
 package-lock.json
-*.xml
 .DS_Store
 .env
+
+# XML dosyalarını takip et
+!makaleler.xml
