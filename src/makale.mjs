@@ -22,7 +22,7 @@ const AYARLAR = {
     "Profesyonel, akıcı, SEO uyumlu, insan tarafından yazılmış gibi doğal ve bilgilendirici",
 
   // Site adresi (SONUNDA / OLMALI)
-  siteUrl: "https://gizlivadinet-creator.github.io/",
+  siteUrl: "https://gizlivadinet-creator.github.io/makale/",
 
   // RSS dosya adı
   rssDosyaAdi: "makaleler.xml",
