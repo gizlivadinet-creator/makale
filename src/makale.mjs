@@ -70,14 +70,13 @@ if (!API_KEY) {
 }
 
 /* =========================================================
-   GEMINI METİN ÜRET
-   DÜZELTİLDİ: gemini-2.5-flash-lite kullanılıyor
+   GEMINI METİN ÜRET (Gemini 2.5 Pro)
 ========================================================= */
 
 async function gemini(prompt) {
   const url =
-  https://generativelanguage.googleapis.com/v1beta/models/+
-  gemini-2.5-pro:generateContent?key=${API_KEY};
+    `https://generativelanguage.googleapis.com/v1beta/models/` +
+    `gemini-2.5-pro:generateContent?key=${API_KEY}`;
 
   const response = await fetch(url, {
     method: "POST",
@@ -87,22 +86,39 @@ async function gemini(prompt) {
     body: JSON.stringify({
       contents: [
         {
-          parts: [{ text: prompt }]
+          role: "user",
+          parts: [
+            {
+              text: prompt
+            }
+          ]
         }
-      ]
+      ],
+      generationConfig: {
+        temperature: 0.8,
+        topP: 0.95,
+        maxOutputTokens: 8192
+      }
     })
   });
 
+  // HTTP hata kontrolü
   if (!response.ok) {
-    const hata = await response.text();
-    throw new Error(`Gemini API Hatası: ${hata}`);
+    const errorText = await response.text();
+    throw new Error(`Gemini API Hatası (${response.status}): ${errorText}`);
   }
 
   const data = await response.json();
 
-  return (
-    data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || ""
-  );
+  // Güvenli içerik alma
+  const text =
+    data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+  if (!text || typeof text !== "string") {
+    throw new Error("Gemini geçerli bir metin döndürmedi.");
+  }
+
+  return text.trim();
 }
 
 /* =========================================================
