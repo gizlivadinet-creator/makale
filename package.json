@@ -1,0 +1,13 @@
+{
+  "name": "ultra-blogger-rss-sistemi",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Wikipedia + ücretsiz AI ile günlük Blogger uyumlu RSS 2.0 feed üretici",
+  "scripts": {
+    "start": "node src/makale.mjs"
+  },
+  "dependencies": {
+    "fast-xml-parser": "^4.5.0"
+  }
+}
