@@ -11,7 +11,7 @@ import fs from "fs";
 ========================================================= */
 
 const AYARLAR = {
-  makaleSayisi: 50,
+  makaleSayisi: 10,
   kategori: "Tarih",
   siteUrl: "https://gizlivadinet-creator.github.io/makale/",
   rssDosyaAdi: "makaleler.xml",
