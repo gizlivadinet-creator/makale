@@ -9,7 +9,7 @@ import { XMLValidator } from "fast-xml-parser";
    - WIKIPEDIA + POLLINATIONS AI
    - BLOGGER UYUMLU
    - SEO ODAKLI
-   - GÖRSELLİ (media:content / media:thumbnail ile Google, Bing, Yandex uyumlu)
+   - GÖRSELLİ (içerik HTML'inin başında tek görsel; çift görsel oluşturmaz)
    - GERÇEK XML DOĞRULAMASI (fast-xml-parser ile)
    - CDATA KIRILMASINA KARŞI KORUMALI
    - TEK BİR OLAY HATASI TÜM ÜRETİMİ DÜŞÜRMEZ
@@ -330,7 +330,6 @@ ${htmlMakale}
 
   const linkGuvenli = escapeXml(detay.link);
   const guidGuvenli = escapeXml(guidDegeri);
-  const imageUrlGuvenli = escapeXml(imageUrl);
   const kategoriGuvenli = escapeXml(AYARLAR.kategori);
 
   return `
@@ -352,9 +351,6 @@ ${icerik}
   <category>${kategoriGuvenli}</category>
 
   <pubDate>${itemPubDate}</pubDate>
-
-  <media:content url="${imageUrlGuvenli}" medium="image" />
-  <media:thumbnail url="${imageUrlGuvenli}" />
 
 </item>`;
 }
@@ -431,8 +427,7 @@ async function main() {
   const rss = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"
   xmlns:atom="http://www.w3.org/2005/Atom"
-  xmlns:content="http://purl.org/rss/1.0/modules/content/"
-  xmlns:media="http://search.yahoo.com/mrss/">
+  xmlns:content="http://purl.org/rss/1.0/modules/content/">
 
 <channel>
 
@@ -505,7 +500,7 @@ async function main() {
   console.log(`📦 Boyut: ${stats.size} byte`);
   console.log(`📝 Başarılı makale sayısı: ${basariliSayisi}`);
   console.log(`⚠️ Atlanan olay sayısı: ${hataliSayisi}`);
-  console.log("🖼️ Görseller + media:content/media:thumbnail eklendi");
+  console.log("🖼️ Görsel içerik HTML'inin başında tek adet olarak ekleniyor");
   console.log("📱 Blogger editör uyumlu HTML üretildi");
   console.log("🔍 SEO uyumlu tarih makaleleri oluşturuldu");
   console.log("🚀 API anahtarı gerektirmez");
