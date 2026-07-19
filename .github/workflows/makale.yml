@@ -34,11 +34,21 @@ jobs:
 
       # ----------------------------------------------------
       # Node.js 22 kur
+      # NOT: cache:"npm" kasıtlı olarak KULLANILMIYOR çünkü repoda
+      # package-lock.json yok; cache seçeneği lock dosyası olmadan
+      # "Dependencies lock file is not found" hatasıyla workflow'u
+      # doğrudan başarısız eder.
       # ----------------------------------------------------
       - name: Node.js kur
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+
+      # ----------------------------------------------------
+      # Bağımlılıkları kur (fast-xml-parser vb.)
+      # ----------------------------------------------------
+      - name: Bağımlılıkları kur
+        run: npm install
 
       # ----------------------------------------------------
       # Sistem bilgileri
@@ -55,7 +65,7 @@ jobs:
           date
 
       # ----------------------------------------------------
-      # Makaleleri üret
+      # Makaleleri üret (XML doğrulaması script içinde yapılır)
       # ----------------------------------------------------
       - name: Makaleleri üret
         run: |
@@ -63,7 +73,7 @@ jobs:
           node src/makale.mjs
 
       # ----------------------------------------------------
-      # XML dosyasını doğrula
+      # XML dosyasını doğrula (dosya varlığı + boyutu)
       # ----------------------------------------------------
       - name: XML doğrulama
         run: |
@@ -98,7 +108,7 @@ jobs:
         id: changes
         shell: bash
         run: |
-          git add .
+          git add makaleler.xml
 
           if git diff --cached --quiet; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -142,7 +152,7 @@ jobs:
           echo "===================================="
           echo "✅ Workflow başarıyla tamamlandı"
           echo "📰 Makaleler üretildi"
-          echo "📄 XML dosyası doğrulandı"
+          echo "📄 XML dosyası script içinde gerçek şema doğrulamasından geçti"
           echo "📤 GitHub'a gönderildi"
           echo "🌐 RSS hazır"
           echo "📅 Tarih: $(date)"
