@@ -1,11 +1,11 @@
 import fs from "fs";
 
 /* =========================================================
-   AYARLAR (Sadece burayı düzenlemen yeterli)
+   PROFESYONEL AYARLAR
 ========================================================= */
 
 const AYARLAR = {
-  // Günde üretilecek makale sayısı
+  // Günlük makale sayısı
   makaleSayisi: 5,
 
   // Minimum kelime sayısı
@@ -14,17 +14,17 @@ const AYARLAR = {
   // Kategori
   kategori: "Tarih",
 
-  // Yazım dili
+  // Dil
   dil: "Türkçe",
 
   // Yazım tarzı
   tarz:
     "Profesyonel, akıcı, SEO uyumlu, insan tarafından yazılmış gibi doğal ve bilgilendirici",
 
-  // Site adresi (SONUNDA / OLMALI)
+  // GitHub Pages adresi (SONUNDA / OLMALI)
   siteUrl: "https://gizlivadinet-creator.github.io/makale/",
 
-  // RSS dosya adı
+  // RSS dosyası
   rssDosyaAdi: "makaleler.xml",
 
   // RSS başlığı
@@ -70,13 +70,13 @@ if (!API_KEY) {
 }
 
 /* =========================================================
-   GEMINI METİN ÜRET (Gemini 2.5 Pro)
+   GEMINI METİN ÜRET (ÜCRETSİZ VE STABİL MODEL)
 ========================================================= */
 
 async function gemini(prompt) {
   const url =
     `https://generativelanguage.googleapis.com/v1beta/models/` +
-    `gemini-2.5-pro:generateContent?key=${API_KEY}`;
+    `gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
   const response = await fetch(url, {
     method: "POST",
@@ -87,22 +87,17 @@ async function gemini(prompt) {
       contents: [
         {
           role: "user",
-          parts: [
-            {
-              text: prompt
-            }
-          ]
+          parts: [{ text: prompt }]
         }
       ],
       generationConfig: {
         temperature: 0.8,
         topP: 0.95,
-        maxOutputTokens: 8192
+        maxOutputTokens: 4096
       }
     })
   });
 
-  // HTTP hata kontrolü
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(`Gemini API Hatası (${response.status}): ${errorText}`);
@@ -110,7 +105,6 @@ async function gemini(prompt) {
 
   const data = await response.json();
 
-  // Güvenli içerik alma
   const text =
     data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
@@ -122,7 +116,7 @@ async function gemini(prompt) {
 }
 
 /* =========================================================
-   SLUG OLUŞTUR
+   SEO UYUMLU SLUG OLUŞTUR
 ========================================================= */
 
 function slugify(text) {
@@ -154,7 +148,7 @@ async function main() {
     console.log(`📝 Makale ${i} oluşturuluyor...`);
 
     /* -----------------------------------------------------
-       1. Başlık üret
+       1. SEO Başlık Üret
     ----------------------------------------------------- */
 
     const baslik = await gemini(AYARLAR.konuPrompt);
@@ -167,7 +161,7 @@ async function main() {
     console.log(`📌 Başlık: ${baslik}`);
 
     /* -----------------------------------------------------
-       2. Görsel URL oluştur
+       2. AI Görsel URL Oluştur
     ----------------------------------------------------- */
 
     const imagePrompt =
@@ -177,7 +171,7 @@ async function main() {
       `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}`;
 
     /* -----------------------------------------------------
-       3. Makale üret
+       3. Blogger Uyumlu SEO Makale Üret
     ----------------------------------------------------- */
 
     const makalePrompt = `
@@ -215,7 +209,7 @@ Ek Kurallar:
     }
 
     /* -----------------------------------------------------
-       4. Tam içerik oluştur
+       4. Görsel + Makale Birleştir
     ----------------------------------------------------- */
 
     const tamIcerik = `
@@ -238,7 +232,7 @@ ${AYARLAR.ozelBolum}
     const link = AYARLAR.siteUrl + slug + ".html";
 
     /* -----------------------------------------------------
-       5. RSS item ekle
+       5. RSS Item Oluştur
     ----------------------------------------------------- */
 
     items += `
@@ -317,6 +311,6 @@ ${tamIcerik}
 ========================================================= */
 
 main().catch(error => {
-  console.error("❌ KRİTİK HATA:", error);
+  console.error("❌ KRİTİK HATA:", error.message);
   process.exit(1);
 });
