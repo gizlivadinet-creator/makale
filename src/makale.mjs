@@ -76,8 +76,8 @@ if (!API_KEY) {
 
 async function gemini(prompt) {
   const url =
-    `https://generativelanguage.googleapis.com/v1beta/models/` +
-    `gemini-2.5-flash-lite:generateContent?key=${API_KEY}`;
+  `https://generativelanguage.googleapis.com/v1beta/models/` +
+  `gemini-2.5-pro:generateContent?key=${API_KEY}`;
 
   const response = await fetch(url, {
     method: "POST",
