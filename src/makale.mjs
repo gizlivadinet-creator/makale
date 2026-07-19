@@ -1,4 +1,5 @@
 import fs from "fs";
+import path from "path";
 
 /* =========================================================
    ULTRA PROFESYONEL BLOGGER RSS SİSTEMİ
@@ -8,6 +9,7 @@ import fs from "fs";
    - BLOGGER UYUMLU
    - SEO ODAKLI
    - GÖRSELLİ
+   - XML DOĞRULAMALI
 ========================================================= */
 
 const AYARLAR = {
@@ -21,11 +23,17 @@ const AYARLAR = {
 };
 
 /* =========================================================
-   HTML GÜVENLİĞİ
+   ÇIKIŞ DOSYASI
+========================================================= */
+
+const OUTPUT_FILE = path.resolve(AYARLAR.rssDosyaAdi);
+
+/* =========================================================
+   HTML / XML GÜVENLİĞİ
 ========================================================= */
 
 function temizle(text = "") {
-  return text
+  return String(text)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
@@ -36,7 +44,7 @@ function temizle(text = "") {
 ========================================================= */
 
 function slugify(text) {
-  return text
+  return String(text)
     .toLowerCase()
     .replace(/ç/g, "c")
     .replace(/ğ/g, "g")
@@ -51,18 +59,43 @@ function slugify(text) {
 }
 
 /* =========================================================
+   TIMEOUT DESTEKLİ FETCH
+========================================================= */
+
+async function fetchWithTimeout(url, timeout = 15000) {
+  const controller = new AbortController();
+
+  const timer = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "blogger-rss-generator/1.0"
+      }
+    });
+
+    return res;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/* =========================================================
    WIKIPEDIA DETAY ÇEK
 ========================================================= */
 
 async function wikiDetay(title) {
   try {
     const url =
-  `https://tr.wikipedia.org/w/api.php?action=query&format=json&origin=*` +
-  `&prop=extracts|pageimages|info` +
-  `&inprop=url&explaintext=1&piprop=original` +
-  `&titles=${encodeURIComponent(title)}`;
+      `https://tr.wikipedia.org/w/api.php?action=query&format=json&origin=*` +
+      `&prop=extracts|pageimages|info` +
+      `&inprop=url` +
+      `&explaintext=1` +
+      `&piprop=original` +
+      `&titles=${encodeURIComponent(title)}`;
 
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
 
     if (!res.ok) {
       throw new Error(`Wikipedia API: ${res.status}`);
@@ -72,10 +105,10 @@ async function wikiDetay(title) {
     const page = Object.values(data.query.pages)[0];
 
     return {
-      text: page.extract || "",
-      image: page.original?.source || "",
+      text: page?.extract || "",
+      image: page?.original?.source || "",
       link:
-        page.fullurl ||
+        page?.fullurl ||
         `https://tr.wikipedia.org/wiki/${encodeURIComponent(title)}`
     };
   } catch (err) {
@@ -90,7 +123,7 @@ async function wikiDetay(title) {
 }
 
 /* =========================================================
-   ÜCRETSİZ AI MAKALE ÜRET (POLLINATIONS)
+   ÜCRETSİZ AI ANALİZ (POLLINATIONS)
 ========================================================= */
 
 async function aiMakale(prompt) {
@@ -98,7 +131,7 @@ async function aiMakale(prompt) {
     const url =
       `https://text.pollinations.ai/${encodeURIComponent(prompt)}`;
 
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url, 20000);
 
     if (!res.ok) {
       throw new Error(`AI Servisi: ${res.status}`);
@@ -138,7 +171,7 @@ function bloggerHtmlOlustur({
 <p>${temizle(olayMetni)}</p>
 
 <h3>Tarihsel Arka Plan</h3>
-<p>${temizle(detayMetni)}</p>
+<p>${temizle(detayMetni.substring(0, 8000))}</p>
 
 ${
   aiMetni
@@ -183,7 +216,7 @@ async function main() {
   console.log("📅 Wikipedia verisi çekiliyor...");
   console.log(api);
 
-  const response = await fetch(api);
+  const response = await fetchWithTimeout(api);
 
   if (!response.ok) {
     throw new Error(`Wikipedia API Hatası: ${response.status}`);
@@ -208,7 +241,6 @@ async function main() {
 
     const baslik = `Tarihte Bugün: ${title}`;
 
-    // Ücretsiz AI destekli analiz
     const aiMetni = await aiMakale(`
 ${baslik} hakkında 2-3 paragraf tarihsel analiz yaz.
 Türkçe yaz.
@@ -223,7 +255,6 @@ HTML etiketi kullanma.
       aiMetni
     });
 
-    // Görsel: Wikipedia varsa onu kullan, yoksa AI görsel üret
     const imageUrl =
       detay.image ||
       `https://image.pollinations.ai/prompt/${encodeURIComponent(
@@ -284,11 +315,11 @@ ${icerik}
 
 <channel>
 
-  <title>${AYARLAR.rssBaslik}</title>
+  <title>${temizle(AYARLAR.rssBaslik)}</title>
 
   <link>${AYARLAR.siteUrl}</link>
 
-  <description>${AYARLAR.rssAciklama}</description>
+  <description>${temizle(AYARLAR.rssAciklama)}</description>
 
   <language>tr-TR</language>
 
@@ -304,16 +335,39 @@ ${icerik}
 </channel>
 </rss>`;
 
-  fs.writeFileSync(AYARLAR.rssDosyaAdi, rss, "utf8");
+  /* -------------------------------------------------------
+     XML DOSYASINI YAZ
+  ------------------------------------------------------- */
+
+  fs.writeFileSync(OUTPUT_FILE, rss, {
+    encoding: "utf8",
+    flag: "w"
+  });
+
+  /* -------------------------------------------------------
+     DOĞRULAMA
+  ------------------------------------------------------- */
+
+  if (!fs.existsSync(OUTPUT_FILE)) {
+    throw new Error("XML dosyası oluşturulamadı!");
+  }
+
+  const stats = fs.statSync(OUTPUT_FILE);
+
+  if (stats.size < 100) {
+    throw new Error("XML dosyası çok küçük, içerik oluşturulmamış olabilir.");
+  }
 
   console.log("====================================");
   console.log("✅ RSS başarıyla oluşturuldu");
-  console.log(`📄 Dosya: ${AYARLAR.rssDosyaAdi}`);
+  console.log(`📄 Dosya: ${OUTPUT_FILE}`);
+  console.log(`📦 Boyut: ${stats.size} byte`);
   console.log(`📝 Makale sayısı: ${secilenler.length}`);
   console.log("🖼️ Görseller otomatik eklendi");
   console.log("📱 Blogger editör uyumlu HTML üretildi");
   console.log("🔍 SEO uyumlu tarih makaleleri oluşturuldu");
   console.log("🚀 API anahtarı gerektirmez");
+  console.log(`🌐 RSS URL: ${RSS_URL}`);
   console.log("====================================");
 }
 
@@ -322,6 +376,6 @@ ${icerik}
 ========================================================= */
 
 main().catch(error => {
-  console.error("❌ KRİTİK HATA:", error.message);
+  console.error("❌ KRİTİK HATA:", error);
   process.exit(1);
 });
