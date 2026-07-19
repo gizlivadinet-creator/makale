@@ -13,7 +13,6 @@ import path from "path";
 ========================================================= */
 
 const AYARLAR = {
-  makaleSayisi: 10,
   kategori: "Tarih",
   siteUrl: "https://gizlivadinet-creator.github.io/makale/",
   rssDosyaAdi: "makaleler.xml",
@@ -88,12 +87,10 @@ async function fetchWithTimeout(url, timeout = 15000) {
 async function wikiDetay(title) {
   try {
     const url =
-      `https://tr.wikipedia.org/w/api.php?action=query&format=json&origin=*` +
-      `&prop=extracts|pageimages|info` +
-      `&inprop=url` +
-      `&explaintext=1` +
-      `&piprop=original` +
-      `&titles=${encodeURIComponent(title)}`;
+  `https://tr.wikipedia.org/w/api.php?action=query&format=json&origin=*` +
+  `&prop=extracts|pageimages|info` +
+  `&inprop=url&explaintext=1&piprop=original` +
+  `&titles=${encodeURIComponent(title)}`;
 
     const res = await fetchWithTimeout(url);
 
@@ -228,9 +225,17 @@ async function main() {
     throw new Error("Bugün için olay bulunamadı.");
   }
 
-  const secilenler = data.events.slice(0, AYARLAR.makaleSayisi);
+  if (!data.events || !data.events.length) {
+  throw new Error("Bugün için olay bulunamadı.");
+}
 
-  let items = "";
+/* -------------------------------------------------------
+   TÜM OLAYLARI AL (SINIRSIZ)
+------------------------------------------------------- */
+
+const secilenler = data.events;
+
+let items = "";
 
   for (const event of secilenler) {
     const title = event.pages?.[0]?.title || event.text;
