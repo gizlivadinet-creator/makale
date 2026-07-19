@@ -1,4 +1,4 @@
-name: Günlük Blogger Makale Sistemi
+name: Ultra Blogger RSS Sistemi
 
 on:
   workflow_dispatch:
@@ -10,14 +10,17 @@ permissions:
   contents: write
 
 concurrency:
-  group: blogger-makale
+  group: ultra-blogger-rss
   cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
-    timeout-minutes: 15
+    timeout-minutes: 20
+
+    env:
+      TZ: Europe/Istanbul
 
     steps:
       # ----------------------------------------------------
@@ -38,20 +41,47 @@ jobs:
           node-version: "22"
 
       # ----------------------------------------------------
-      # Node sürümünü göster
+      # Sistem bilgileri
       # ----------------------------------------------------
-      - name: Node sürümünü kontrol et
+      - name: Sistem bilgileri
         run: |
+          echo "📦 Node sürümü:"
           node -v
+
+          echo "📦 npm sürümü:"
           npm -v
+
+          echo "📅 Sunucu saati:"
+          date
 
       # ----------------------------------------------------
       # Makaleleri üret
-      # API gerektirmez
       # ----------------------------------------------------
       - name: Makaleleri üret
         run: |
+          set -e
           node src/makale.mjs
+
+      # ----------------------------------------------------
+      # XML dosyasını doğrula
+      # ----------------------------------------------------
+      - name: XML doğrulama
+        run: |
+          echo "📁 Klasör içeriği:"
+          ls -la
+
+          if [ ! -f "makaleler.xml" ]; then
+            echo "❌ makaleler.xml bulunamadı!"
+            exit 1
+          fi
+
+          echo "✅ makaleler.xml bulundu"
+
+          echo "📦 Dosya boyutu:"
+          wc -c makaleler.xml
+
+          echo "🔍 İlk 10 satır:"
+          head -n 10 makaleler.xml
 
       # ----------------------------------------------------
       # Git ayarları
@@ -62,9 +92,9 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       # ----------------------------------------------------
-      # Değişiklik var mı kontrol et
+      # Değişiklik kontrolü
       # ----------------------------------------------------
-      - name: Değişiklikleri kontrol et
+      - name: Değişiklik kontrolü
         id: changes
         shell: bash
         run: |
@@ -72,10 +102,10 @@ jobs:
 
           if git diff --cached --quiet; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "Değişiklik yok."
+            echo "ℹ️ Değişiklik yok."
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "Değişiklik bulundu."
+            echo "✅ Değişiklik bulundu."
           fi
 
       # ----------------------------------------------------
@@ -84,15 +114,15 @@ jobs:
       - name: Commit oluştur
         if: steps.changes.outputs.changed == 'true'
         run: |
-          git commit -m "📰 Günlük otomatik Blogger makaleleri"
+          git commit -m "📰 Günlük otomatik Blogger RSS güncellemesi"
 
       # ----------------------------------------------------
-      # Uzak değişiklikleri al (fetch first hatasını önler)
+      # Uzak branch'i güncelle
       # ----------------------------------------------------
-      - name: Uzak değişiklikleri al
+      - name: Uzak branch'i güncelle
         if: steps.changes.outputs.changed == 'true'
         run: |
-          git pull --rebase origin main || true
+          git pull --rebase origin main || git pull --rebase origin master || true
 
       # ----------------------------------------------------
       # GitHub'a gönder
@@ -100,16 +130,23 @@ jobs:
       - name: GitHub'a gönder
         if: steps.changes.outputs.changed == 'true'
         run: |
-          git push origin main
+          git push origin HEAD
 
       # ----------------------------------------------------
-      # Başarı mesajı
+      # Son durum raporu
       # ----------------------------------------------------
-      - name: Tamamlandı
+      - name: Son durum raporu
         run: |
+          echo "===================================="
+          echo "🚀 ULTRA BLOGGER RSS SİSTEMİ"
           echo "===================================="
           echo "✅ Workflow başarıyla tamamlandı"
           echo "📰 Makaleler üretildi"
+          echo "📄 XML dosyası doğrulandı"
           echo "📤 GitHub'a gönderildi"
-          echo "🚀 Blogger RSS sistemi hazır"
+          echo "🌐 RSS hazır"
+          echo "📅 Tarih: $(date)"
+          echo "===================================="
+          echo "RSS URL:"
+          echo "https://gizlivadinet-creator.github.io/makale/makaleler.xml"
           echo "===================================="
