@@ -1,13 +1,17 @@
-name: Gemini Makale
+name: OpenAI Makale Sistemi
 
 on:
   workflow_dispatch:
 
   schedule:
-    - cron: "0 3 * * *"
+    - cron: "0 3 * * *"   # Türkiye saati 06:00
 
 permissions:
   contents: write
+
+concurrency:
+  group: openai-makale
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -23,23 +27,33 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: "npm"
 
-      - name: Makale üret
+      - name: Makaleleri üret
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: node src/makale.mjs
 
-      - name: GitHub'a gönder
+      - name: Git ayarları
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+      - name: Değişiklikleri kaydet
+        run: |
           git add .
 
           if git diff --cached --quiet; then
             echo "Değişiklik yok."
-          else
-            git commit -m "🤖 Günlük Gemini makaleleri"
-            git pull --rebase origin main
-            git push origin main
+            exit 0
           fi
+
+          git commit -m "🤖 Günlük OpenAI makaleleri"
+
+      - name: Uzak değişiklikleri al
+        run: |
+          git pull --rebase origin main || true
+
+      - name: GitHub'a gönder
+        run: |
+          git push origin main
