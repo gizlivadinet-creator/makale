@@ -22,12 +22,11 @@ const AYARLAR = {
   siteUrl: "https://gizlivadinet-creator.github.io/makale/",
   rssDosyaAdi: "makaleler.xml",
   rssBaslik: "Tarihte Bugün - Günlük Tarih Makaleleri",
-  rssAciklama:
-    "Ücretsiz yapay zeka teknolojileri ile desteklenen Mifrm Blogger Forum, her gün özgün ve kaliteli tarih içerikleri oluşturur. Sistem, önemli olayları analiz ederek SEO uyumlu, okunabilir ve profesyonel makaleleri otomatik olarak hazırlar.",
+  rssAciklama: "Her gün güncellenen tarih makaleleri.",
   // dc:creator için yazar/etiket adı (geçerli bir e-posta gerektirmeyen
   // serbest metin alanı; RSS'in <author> etiketi e-posta zorunlu kıldığı
   // için burada Dublin Core ad alanı tercih edildi).
-  yazarAdi: "Mifrm Blogger Forum",
+  yazarAdi: "Tarihte Bugün",
   // <description> için kısa SEO özetinin maksimum karakter sayısı.
   ozetMaksUzunluk: 220,
   // Aynı anda çok fazla olay işlenip ücretsiz API'lerin (Pollinations/Wikipedia)
@@ -419,24 +418,13 @@ function bloggerHtmlOlustur({
   return `
 <h2>${temizle(baslik)}</h2>
 
-<p><strong>SEO Özeti:</strong> ${temizle(
-    baslik
-  )} hakkında tarihsel arka planı, dünya tarihine etkileri ve önemli gelişmeleri içeren detaylı inceleme.</p>
-
-<p><strong>${temizle(
-    baslik
-  )}</strong>, dünya tarihinin önemli dönüm noktalarından biridir.</p>
-
-<h3>Olayın Özeti</h3>
 <p>${temizle(olayMetni)}</p>
 
-<h3>Tarihsel Arka Plan</h3>
 ${duzMetniHtmlParagraflaraCevir(detayMetni)}
 
 ${
   aiMetni
     ? `
-<h3>Detaylı Analiz</h3>
 <p>${temizle(aiMetni)}</p>
 `
     : ""
@@ -493,10 +481,6 @@ HTML etiketi kullanma.
 </p>
 
 ${htmlMakale}
-
-<hr>
-
-<p><strong>Kaynak:</strong> Wikipedia yapay zeka teknolojileri ile desteklenen Mifrm Blogger Forum, her gün özgün ve kaliteli tarih içerikleri oluşturur. Sistem, önemli olayları analiz ederek SEO uyumlu, okunabilir ve profesyonel makaleleri otomatik olarak hazırlar.</p>
 `;
 
   // CDATA'ya girecek her şeyi kırılmaya karşı güvenli hale getiriyoruz.
