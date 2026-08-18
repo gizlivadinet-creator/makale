@@ -443,23 +443,6 @@ ${
 }
 
 ${videoHtml || ""}
-
-<h3>Dünya Tarihine Etkileri</h3>
-
-<p>Bu olayın etkileri uzun yıllar boyunca hissedilmiş ve birçok ülkenin siyasi, ekonomik ve toplumsal yapısını etkilemiştir.</p>
-
-<h3>Sıkça Sorulan Sorular</h3>
-
-<p><strong>Bu olay neden önemlidir?</strong></p>
-<p>Çünkü dönemin güç dengelerini etkileyen ve tarihsel süreci değiştiren sonuçlar doğurmuştur.</p>
-
-<p><strong>Günümüze etkisi var mı?</strong></p>
-<p>Evet, tarihçiler ve araştırmacılar tarafından günümüzde de incelenen önemli gelişmeler arasında yer almaktadır.</p>
-
-<h3>Sonuç</h3>
-<p><strong>${temizle(
-    baslik
-  )}</strong>, insanlık tarihinin dönüm noktalarından biri olarak kabul edilir ve tarih araştırmalarında önemli bir yere sahiptir.</p>
 `;
 }
 
@@ -514,14 +497,6 @@ ${htmlMakale}
 <hr>
 
 <p><strong>Kaynak:</strong> Wikipedia yapay zeka teknolojileri ile desteklenen Mifrm Blogger Forum, her gün özgün ve kaliteli tarih içerikleri oluşturur. Sistem, önemli olayları analiz ederek SEO uyumlu, okunabilir ve profesyonel makaleleri otomatik olarak hazırlar.</p>
-
-<p>
-  <a href="${temizle(detay.link)}"
-     target="_blank"
-     rel="nofollow noopener">
-     Detaylı bilgi için tıklayın
-  </a>
-</p>
 `;
 
   // CDATA'ya girecek her şeyi kırılmaya karşı güvenli hale getiriyoruz.
